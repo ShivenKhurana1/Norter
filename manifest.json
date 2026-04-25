@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Norter",
+  "version": "1.0.0",
+  "description": "Take and manage quick notes from your browser",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["https://api.crossref.org/*", "https://export.arxiv.org/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icons/icon.svg"
+  },
+  "icons": {
+    "16": "icons/icon.svg",
+    "32": "icons/icon.svg",
+    "48": "icons/icon.svg",
+    "128": "icons/icon.svg"
+  }
+}

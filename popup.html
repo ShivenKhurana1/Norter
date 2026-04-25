@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Norter</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>Norter</h1>
+      <div class="header-actions">
+        <button id="themeToggle" class="btn-icon" title="Toggle dark mode">
+          <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+        </button>
+        <span class="note-count" id="noteCount">0 notes</span>
+      </div>
+    </header>
+
+    <div class="input-section">
+      <textarea 
+        id="noteInput" 
+        placeholder="Type your note here... (Markdown supported: **bold**, *italic*, `code`)"
+        rows="3"
+      ></textarea>
+      <button id="addBtn" class="btn-primary">Add Note</button>
+    </div>
+
+    <!-- Research Assistant Section -->
+
+<div class="research-section" id="researchSection" style="display: none;">
+
+  <div class="research-header">
+
+    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+
+    <span>Paper Detected</span>
+
+  </div>
+
+  <div class="paper-info" id="paperInfo">
+
+    <p class="paper-title" id="paperTitle"></p>
+
+    <p class="paper-authors" id="paperAuthors"></p>
+
+    <p class="paper-doi" id="paperDoi"></p>
+
+    <p class="paper-abstract" id="paperAbstract"></p>
+
+  </div>
+
+  <div class="citation-formats">
+
+    <button class="citation-btn active" data-format="apa">APA</button>
+
+    <button class="citation-btn" data-format="mla">MLA</button>
+
+    <button class="citation-btn" data-format="chicago">Chicago</button>
+
+    <button class="citation-btn" data-format="bibtex">BibTeX</button>
+
+  </div>
+
+  <div class="citation-output" id="citationOutput"></div>
+
+  <div class="research-actions">
+
+    <button id="saveCitationBtn" class="btn-primary btn-small">Save as Note</button>
+
+    <button id="saveToLibraryBtn" class="btn-secondary btn-small">Save to Library</button>
+
+  </div>
+
+</div>
+
+
+
+<!-- Manual DOI Lookup -->
+
+<div class="doi-lookup">
+
+  <input type="text" id="doiInput" placeholder="Enter DOI (e.g., 10.1038/nature12373)" class="search-input">
+
+  <button id="lookupDoiBtn" class="btn-primary btn-small">Lookup</button>
+
+</div>
+
+
+
+<!-- Batch DOI Lookup -->
+
+<div class="batch-lookup">
+
+  <textarea id="batchDoiInput" placeholder="Enter multiple DOIs (one per line)" rows="3" class="search-input"></textarea>
+
+  <button id="batchLookupBtn" class="btn-primary btn-small">Batch Lookup</button>
+
+</div>
+
+
+
+<!-- Paper Library Section -->
+
+<div class="library-section" id="librarySection">
+
+  <div class="library-header">
+
+    <h3>� Paper Library</h3>
+�
+    <div class="library-filters">
+
+      <input type="text" id="librarySearch" placeholder="Search by title, author, journal..." class="search-input">
+
+      <select id="libraryYearFilter" class="search-input">
+
+        <option value="">All Years</option>
+
+      </select>
+
+    </div>
+
+  </div>
+
+  <div class="library-list" id="libraryList">
+
+    <div class="empty-state" id="libraryEmpty">
+
+      <p>No papers in your library yet.</p>
+
+    </div>div>
+
+  </div>
+
+</div>
+
+    <div class="search-section">
+      <input 
+        type="text" 
+        id="searchInput" 
+        placeholder="Search notes..."
+        class="search-input"
+      >
+    </div>
+
+    <div class="notes-list" id="notesList">
+      <div class="empty-state" id="emptyState">
+        <p>No notes yet. Create your first note above!</p>
+      </div>
+    </div>
+
+    <div class="footer">
+      <button id="exportBtn" class="btn-secondary">Export Notes</button>
+      <button id="exportCitationsBtn" class="btn-secondary">Export Citations</button>
+      <button id="clearAllBtn" class="btn-danger">Clear All</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
