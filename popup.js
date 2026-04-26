@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderNotes();
     renderPaperLibrary();
     updateYearFilter();
+    updateTagFilter();
   });
 
   // Theme toggle
@@ -251,17 +252,30 @@ document.addEventListener('DOMContentLoaded', () => {
   const libraryEmpty = document.getElementById('libraryEmpty');
   const librarySearch = document.getElementById('librarySearch');
   const libraryYearFilter = document.getElementById('libraryYearFilter');
+  const libraryTagFilter = document.getElementById('libraryTagFilter');
+  const toggleAbstractBtn = document.getElementById('toggleAbstractBtn');
+  const historySection = document.getElementById('historySection');
+  const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
+  const historyContent = document.getElementById('historyContent');
+  const historyList = document.getElementById('historyList');
+  const historyEmpty = document.getElementById('historyEmpty');
+  const totalCitations = document.getElementById('totalCitations');
+  const uniquePapers = document.getElementById('uniquePapers');
+
+  let abstractExpanded = false;
 
   function renderPaperLibrary() {
     const searchTerm = librarySearch.value.toLowerCase();
     const yearFilter = libraryYearFilter.value;
+    const tagFilter = libraryTagFilter.value;
 
     let filteredPapers = paperLibrary.filter(paper => {
       const matchesSearch = paper.title.toLowerCase().includes(searchTerm) ||
         paper.authors.some(a => a.toLowerCase().includes(searchTerm)) ||
         paper.journal.toLowerCase().includes(searchTerm);
       const matchesYear = !yearFilter || paper.year === yearFilter;
-      return matchesSearch && matchesYear;
+      const matchesTag = !tagFilter || (paper.tags && paper.tags.includes(tagFilter));
+      return matchesSearch && matchesYear && matchesTag;
     });
 
     if (filteredPapers.length === 0) {
@@ -280,12 +294,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function createPaperElement(paper) {
     const div = document.createElement('div');
-    div.className = 'paper-item';
+    div.className = `paper-item${paper.favorite ? ' favorite' : ''}`;
     div.innerHTML = `
-      <div class="paper-item-title">${paper.title}</div>
+      <div class="paper-item-header">
+        <div class="paper-item-title">${paper.title}</div>
+        <button class="btn-icon btn-star${paper.favorite ? ' active' : ''}" title="Toggle favorite">
+          <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+        </button>
+      </div>
       <div class="paper-item-meta">
         <span class="paper-item-authors">${paper.authors.slice(0, 2).join(', ')}${paper.authors.length > 2 ? ' et al.' : ''}</span>
         <span class="paper-item-journal">${paper.journal} (${paper.year})</span>
+      </div>
+      <div class="paper-item-tags">
+        ${(paper.tags || []).map(tag => `<span class="tag">${tag}</span>`).join('')}
+        <button class="btn-icon btn-add-tag" title="Add tag">+</button>
+      </div>
+      <div class="paper-item-note">
+        <textarea class="personal-note" placeholder="Add personal note..." rows="1">${paper.personalNote || ''}</textarea>
       </div>
       <div class="paper-item-actions">
         <button class="btn-icon btn-copy-citation" title="Copy Citation">
@@ -310,6 +336,38 @@ document.addEventListener('DOMContentLoaded', () => {
       savePaperLibrary();
       renderPaperLibrary();
       updateYearFilter();
+      updateTagFilter();
+    });
+
+    div.querySelector('.btn-star').addEventListener('click', () => {
+      paper.favorite = !paper.favorite;
+      savePaperLibrary();
+      renderPaperLibrary();
+    });
+
+    div.querySelector('.btn-add-tag').addEventListener('click', () => {
+      const tag = prompt('Enter tag:');
+      if (tag && tag.trim()) {
+        if (!paper.tags) paper.tags = [];
+        if (!paper.tags.includes(tag.trim())) {
+          paper.tags.push(tag.trim());
+          savePaperLibrary();
+          renderPaperLibrary();
+          updateTagFilter();
+        }
+      }
+    });
+
+    div.querySelector('.personal-note').addEventListener('input', (e) => {
+      paper.personalNote = e.target.value;
+      savePaperLibrary();
+    });
+
+    div.querySelector('.personal-note').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        e.target.blur();
+      }
     });
 
     return div;
@@ -328,8 +386,22 @@ document.addEventListener('DOMContentLoaded', () => {
     libraryYearFilter.value = currentValue;
   }
 
+  function updateTagFilter() {
+    const allTags = [...new Set(paperLibrary.flatMap(p => p.tags || []))].sort();
+    const currentValue = libraryTagFilter.value;
+    libraryTagFilter.innerHTML = '<option value="">All Tags</option>';
+    allTags.forEach(tag => {
+      const option = document.createElement('option');
+      option.value = tag;
+      option.textContent = tag;
+      libraryTagFilter.appendChild(option);
+    });
+    libraryTagFilter.value = currentValue;
+  }
+
   librarySearch.addEventListener('input', renderPaperLibrary);
   libraryYearFilter.addEventListener('change', renderPaperLibrary);
+  libraryTagFilter.addEventListener('change', renderPaperLibrary);
 
   // ==================== RESEARCH ASSISTANT ====================
 
@@ -349,6 +421,29 @@ document.addEventListener('DOMContentLoaded', () => {
   
   let currentPaper = null;
   let currentCitation = '';
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', (e) => {
+    // Ctrl/cmd + N: Add note
+    if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+      e.preventDefault();
+      noteInput.focus();
+    }
+    // Ctrl/Cmd + F: Search notes
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      e.preventDefault();
+      searchInput.focus();
+    }
+    // Ctrl/Cmd + L: DOI lookup
+    if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+      e.preventDefault();
+      doiInput.focus();
+    }
+    // Escape: Clear focus
+    if (e.key === 'Escape') {
+      document.activeElement.blur();
+    }
+  });
 
   // Detect DOI from current tab
   async function detectPaperFromTab() {
@@ -480,9 +575,31 @@ document.addEventListener('DOMContentLoaded', () => {
     paperTitle.textContent = paper.title;
     paperAuthors.textContent = paper.authors.slice(0, 3).join(', ') + (paper.authors.length > 3 ? ' et al.' : '');
     paperDoi.textContent = `DOI: ${paper.doi}`;
-    paperAbstract.textContent = paper.abstract ? paper.abstract.substring(0, 300) + (paper.abstract.length > 300 ? '...' : '') : '';
-    paperAbstract.style.display = paper.abstract ? 'block' : 'none';
+    
+    if (paper.abstract) {
+      paperAbstract.textContent = paper.abstract.substring(0, 300) + (paper.abstract.length > 300 ? '...' : '');
+      paperAbstract.style.display = 'block';
+      toggleAbstractBtn.style.display = paper.abstract.length > 300 ? 'inline-block' : 'none';
+      toggleAbstractBtn.textContent = 'Show more';
+      abstractExpanded = false;
+    } else {
+      paperAbstract.style.display = 'none';
+      toggleAbstractBtn.style.display = 'none';
+    }
   }
+
+  // Toggle abstract
+  toggleAbstractBtn.addEventListener('click', () => {
+    if (!currentPaper) return;
+    abstractExpanded = !abstractExpanded;
+    if (abstractExpanded) {
+      paperAbstract.textContent = currentPaper.abstract;
+      toggleAbstractBtn.textContent = 'Show less';
+    } else {
+      paperAbstract.textContent = currentPaper.abstract.substring(0, 300) + '...';
+      toggleAbstractBtn.textContent = 'Show more';
+    }
+  });
 
   function generateCitation(format) {
     if (!currentPaper) return;
@@ -613,11 +730,15 @@ document.addEventListener('DOMContentLoaded', () => {
     
     paperLibrary.unshift({
       ...paper,
-      addedAt: Date.now()
+      addedAt: Date.now(),
+      tags: [],
+      favorite: false,
+      personalNote: ''
     });
     savePaperLibrary();
     renderPaperLibrary();
     updateYearFilter();
+    updateTagFilter();
     showToast('Paper added to library');
   }
 
@@ -659,6 +780,47 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     saveCitationHistory();
   }
+
+  // Toggle history dashboard
+toggleHistoryBtn.addEventListener('click', () => {
+  const isHidden = historyContent.style.display === 'none';
+  historyContent.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) renderCitationHistory();
+});
+
+
+function renderCitationHistory() {
+  const total = citationHistory.reduce((sum, h) => sum + h.count, 0);
+  const unique = new Set(citationHistory.map(h => h.doi)).size;
+
+  
+  totalCitations.textContent = total;
+  uniquePapers.textContent = unique;
+
+ 
+  if (citationHistory.length === 0) {
+    historyList.innerHTML = '';
+    historyList.appendChild(historyEmpty);
+    historyEmpty.style.display = 'block';
+    return;
+  }
+
+  historyList.innerHTML = '';
+  citationHistory.slice(0, 10).forEach(h => {
+    const paper = paperLibrary.find(p => p.doi === h.doi);
+    const title = paper ? paper.title : h.doi;
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.innerHTML = `
+      <div class="history-item-title">${title}</div>
+      <div class="history-item-meta">
+        <span class="history-count">${h.count}x</span>
+        <span class="history-format">${h.format.toUpperCase()}</span>
+      </div>
+    `;
+    historyList.appendChild(div);
+  });
+}
 
   // Initialize research assistant
   detectPaperFromTab();

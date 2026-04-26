@@ -28,112 +28,90 @@
     </div>
 
     <!-- Research Assistant Section -->
-
-<div class="research-section" id="researchSection" style="display: none;">
-
-  <div class="research-header">
-
-    <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-
-    <span>Paper Detected</span>
-
-  </div>
-
-  <div class="paper-info" id="paperInfo">
-
-    <p class="paper-title" id="paperTitle"></p>
-
-    <p class="paper-authors" id="paperAuthors"></p>
-
-    <p class="paper-doi" id="paperDoi"></p>
-
-    <p class="paper-abstract" id="paperAbstract"></p>
-
-  </div>
-
-  <div class="citation-formats">
-
-    <button class="citation-btn active" data-format="apa">APA</button>
-
-    <button class="citation-btn" data-format="mla">MLA</button>
-
-    <button class="citation-btn" data-format="chicago">Chicago</button>
-
-    <button class="citation-btn" data-format="bibtex">BibTeX</button>
-
-  </div>
-
-  <div class="citation-output" id="citationOutput"></div>
-
-  <div class="research-actions">
-
-    <button id="saveCitationBtn" class="btn-primary btn-small">Save as Note</button>
-
-    <button id="saveToLibraryBtn" class="btn-secondary btn-small">Save to Library</button>
-
-  </div>
-
-</div>
-
-
-
-<!-- Manual DOI Lookup -->
-
-<div class="doi-lookup">
-
-  <input type="text" id="doiInput" placeholder="Enter DOI (e.g., 10.1038/nature12373)" class="search-input">
-
-  <button id="lookupDoiBtn" class="btn-primary btn-small">Lookup</button>
-
-</div>
-
-
-
-<!-- Batch DOI Lookup -->
-
-<div class="batch-lookup">
-
-  <textarea id="batchDoiInput" placeholder="Enter multiple DOIs (one per line)" rows="3" class="search-input"></textarea>
-
-  <button id="batchLookupBtn" class="btn-primary btn-small">Batch Lookup</button>
-
-</div>
-
-
-
-<!-- Paper Library Section -->
-
-<div class="library-section" id="librarySection">
-
-  <div class="library-header">
-
-    <h3>� Paper Library</h3>
-�
-    <div class="library-filters">
-
-      <input type="text" id="librarySearch" placeholder="Search by title, author, journal..." class="search-input">
-
-      <select id="libraryYearFilter" class="search-input">
-
-        <option value="">All Years</option>
-
-      </select>
-
+    <div class="research-section" id="researchSection" style="display: none;">
+      <div class="research-header">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+        <span>Paper Detected</span>
+      </div>
+      <div class="paper-info" id="paperInfo">
+        <p class="paper-title" id="paperTitle"></p>
+        <p class="paper-authors" id="paperAuthors"></p>
+        <p class="paper-doi" id="paperDoi"></p>
+        <p class="paper-abstract" id="paperAbstract"></p>
+        <button id="toggleAbstractBtn" class="btn-link" style="display: none;">Show more</button>
+      </div>
+      <div class="citation-formats">
+        <button class="citation-btn active" data-format="apa">APA</button>
+        <button class="citation-btn" data-format="mla">MLA</button>
+        <button class="citation-btn" data-format="chicago">Chicago</button>
+        <button class="citation-btn" data-format="bibtex">BibTeX</button>
+      </div>
+      <div class="citation-output" id="citationOutput"></div>
+      <div class="research-actions">
+        <button id="saveCitationBtn" class="btn-primary btn-small">Save as Note</button>
+        <button id="saveToLibraryBtn" class="btn-secondary btn-small">Save to Library</button>
+      </div>
     </div>
 
-  </div>
+    <!-- Manual DOI Lookup -->
+    <div class="doi-lookup">
+      <input type="text" id="doiInput" placeholder="Enter DOI (e.g., 10.1038/nature12373)" class="search-input">
+      <button id="lookupDoiBtn" class="btn-primary btn-small">Lookup</button>
+    </div>
 
-  <div class="library-list" id="libraryList">
+    <!-- Batch DOI Lookup -->
+    <div class="batch-lookup">
+      <textarea id="batchDoiInput" placeholder="Enter multiple DOIs (one per line)" rows="3" class="search-input"></textarea>
+      <button id="batchLookupBtn" class="btn-primary btn-small">Batch Lookup</button>
+    </div>
 
-    <div class="empty-state" id="libraryEmpty">
+    <!-- Paper Library Section -->
+    <div class="library-section" id="librarySection">
+      <div class="library-header">
+        <h3>📚 Paper Library</h3>
+        <div class="library-filters">
+          <input type="text" id="librarySearch" placeholder="Search by title, author, journal..." class="search-input">
+          <select id="libraryYearFilter" class="search-input">
+            <option value="">All Years</option>
+          </select>
+          <select id="libraryTagFilter" class="search-input">
+            <option value="">All Tags</option>
+          </select>
+        </div>
+      </div>
+      <div class="library-list" id="libraryList">
+        <div class="empty-state" id="libraryEmpty">
+          <p>No papers in your library yet.</p>
+        </div>
+      </div>
+    </div>
 
-      <p>No papers in your library yet.</p>
-
-    </div>div>
-
-  </div>
-
-</div>
+    <!-- Citation History Dashboard -->
+    <div class="history-section" id="historySection">
+      <div class="history-header">
+        <h3>📊 Citation History</h3>
+        <button id="toggleHistoryBtn" class="btn-icon" title="Toggle history">
+          <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+      </div>
+      <div class="history-content" id="historyContent" style="display: none;">
+        <div class="history-stats" id="historyStats">
+          <div class="stat-item">
+            <span class="stat-value" id="totalCitations">0</span>
+            <span class="stat-label">Total Citations</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-value" id="uniquePapers">0</span>
+            <span class="stat-label">Unique Papers</span>
+          </div>
+        </div>
+        <div class="history-list" id="historyList">
+          <div class="empty-state" id="historyEmpty">
+            <p>No citation history yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="search-section">
       <input 
