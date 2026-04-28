@@ -1,18 +1,37 @@
 {
   "manifest_version": 3,
   "name": "Norter",
-  "version": "1.0.0",
-  "description": "Take and manage quick notes from your browser",
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://api.crossref.org/*", "https://export.arxiv.org/*"],
-  "action": {
-    "default_popup": "popup.html",
-    "default_icon": "icons/icon.svg"
+  "version": "2.0",
+  "description": "Research assistant with notes, citations, and productivity tools",
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "activeTab",
+    "scripting",
+    "notifications",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://api.crossref.org/*",
+    "https://export.arxiv.org/*",
+    "https://api.semanticscholar.org/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
   },
-  "icons": {
-    "16": "icons/icon.svg",
-    "32": "icons/icon.svg",
-    "48": "icons/icon.svg",
-    "128": "icons/icon.svg"
-  }
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["tesseract.min.js", "worker.min.js"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

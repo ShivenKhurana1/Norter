@@ -1,4 +1,6 @@
+console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM Content Loaded');
   const noteInput = document.getElementById('noteInput');
   const addBtn = document.getElementById('addBtn');
   const notesList = document.getElementById('notesList');
@@ -9,15 +11,275 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearAllBtn = document.getElementById('clearAllBtn');
   const themeToggle = document.getElementById('themeToggle');
 
+  // Rich text editor toolbar - attach event listeners immediately
+  const toolbarButtons = document.querySelectorAll('.toolbar-btn[data-command]');
+  console.log('Toolbar buttons found:', toolbarButtons.length);
+  
+  toolbarButtons.forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      console.log('Button clicked:', btn.dataset.command);
+      const command = btn.dataset.command;
+      const value = btn.dataset.value || null;
+      document.execCommand(command, false, value);
+      noteInput.focus();
+    });
+  });
+
+  // ==================== PRODUCTIVITY FEATURES ====================
+
+  
+
+  let tasks = [];
+
+  
+
+  // Task DOM elements
+
+  const taskInput = document.getElementById('taskInput');
+
+  const taskReminder = document.getElementById('taskReminder');
+
+  const addTaskBtn = document.getElementById('addTaskBtn');
+
+  const tasksList = document.getElementById('tasksList');
+
+  const tasksEmpty = document.getElementById('tasksEmpty');
+
+  const toggleTasksBtn = document.getElementById('toggleTasksBtn');
+
+  const tasksContent = document.getElementById('tasksContent');
+
+  // Load tasks from storage
+  chrome.storage.local.get(['tasks'], (result) => {
+    tasks = result.tasks || [];
+    renderTasks();
+  });
+
+  // Save tasks
+  function saveTasks() {
+    chrome.storage.local.set({ tasks });
+  }
+
+  // Render tasks
+  function renderTasks() {
+    if (tasks.length === 0) {
+      tasksList.innerHTML = '<div class="empty-state"><p>No tasks yet.</p></div>';
+      return;
+    }
+    
+    tasksList.innerHTML = tasks.map(task => `
+      <div class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+        <input type="checkbox" class="task-checkbox" ${task.completed ? 'checked' : ''}>
+        <span class="task-text">${task.text}</span>
+        ${task.reminder ? `<span class="task-reminder">${new Date(task.reminder).toLocaleString()}</span>` : ''}
+        <button class="btn-icon btn-delete-task">×</button>
+      </div>
+    `).join('');
+    
+    // Attach event listeners
+    tasksList.querySelectorAll('.task-checkbox').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const taskId = e.target.closest('.task-item').dataset.id;
+        toggleTask(taskId);
+      });
+    });
+    
+    tasksList.querySelectorAll('.btn-delete-task').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const taskId = e.target.closest('.task-item').dataset.id;
+        deleteTask(taskId);
+      });
+    });
+  }
+
+  // Add task
+  addTaskBtn.addEventListener('click', () => {
+    const text = taskInput.value.trim();
+    if (!text) return;
+    
+    const task = {
+      id: Date.now().toString(),
+      text,
+      completed: false,
+      reminder: taskReminder.value || null,
+      createdAt: Date.now()
+    };
+    
+    tasks.unshift(task);
+    saveTasks();
+    renderTasks();
+    
+    taskInput.value = '';
+    taskReminder.value = '';
+    
+    // Set alarm if reminder is set
+    if (task.reminder) {
+      const alarmTime = new Date(task.reminder).getTime();
+      if (alarmTime > Date.now()) {
+        chrome.alarms.create(`task-reminder-${task.id}`, { when: alarmTime });
+      }
+    }
+  });
+
+  // Toggle task completion
+  function toggleTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      task.completed = !task.completed;
+      saveTasks();
+      renderTasks();
+    }
+  }
+
+  // Delete task
+  function deleteTask(taskId) {
+    console.log('Delete task called:', taskId);
+    tasks = tasks.filter(t => t.id !== taskId);
+    chrome.alarms.clear(`task-reminder-${taskId}`);
+    saveTasks();
+    renderTasks();
+  }
+
+  // Toggle tasks visibility
+  toggleTasksBtn.addEventListener('click', () => {
+    tasksContent.style.display = tasksContent.style.display === 'none' ? 'block' : 'none';
+  });
+
+  // Voice-to-text
+  const voiceBtn = document.getElementById('voiceBtn');
+  console.log('Voice button found:', voiceBtn);
+  let recognition = null;
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    console.log('Speech recognition API available');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    voiceBtn.addEventListener('click', () => {
+      console.log('Voice button clicked');
+      recognition.start();
+      voiceBtn.textContent = 'Listening...';
+      voiceBtn.disabled = true;
+    });
+    
+    recognition.onresult = (event) => {
+      console.log('Speech recognition result:', event);
+      if (event.results[0].isFinal) {
+        const transcript = event.results[0][0].transcript;
+        noteInput.innerHTML += transcript + ' ';
+        voiceBtn.textContent = 'Dictation';
+        voiceBtn.disabled = false;
+      }
+    };
+    
+    recognition.onerror = (error) => {
+      console.error('Speech recognition error:', error);
+      voiceBtn.textContent = 'Dictation';
+      voiceBtn.disabled = false;
+    };
+    
+    recognition.onend = () => {
+      console.log('Speech recognition ended');
+      voiceBtn.textContent = 'Dictation';
+      voiceBtn.disabled = false;
+    };
+  } else {
+    console.log('Speech recognition API not available');
+    voiceBtn.style.display = 'none';
+  }
+
+  // OCR (requires Tesseract.js)
+  const ocrBtn = document.getElementById('ocrBtn');
+  const ocrInput = document.getElementById('ocrInput');
+  console.log('OCR button found:', ocrBtn);
+  console.log('OCR input found:', ocrInput);
+  
+  ocrBtn.addEventListener('click', () => {
+    console.log('OCR button clicked');
+    ocrInput.click();
+  });
+  
+  ocrInput.addEventListener('change', (e) => {
+    console.log('OCR file selected');
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    console.log('Processing file:', file.name);
+    ocrBtn.textContent = 'Processing...';
+    ocrBtn.disabled = true;
+    
+    // Try to use Tesseract.js if available
+    if (typeof Tesseract !== 'undefined') {
+      console.log('Tesseract already loaded');
+      Tesseract.recognize(file, 'eng', {
+        logger: m => console.log(m)
+      })
+        .then(({ data: { text } }) => {
+          console.log('OCR result:', text);
+          noteInput.innerHTML += text;
+          ocrBtn.textContent = 'OCR';
+          ocrBtn.disabled = false;
+        })
+        .catch(err => {
+          console.error('OCR error:', err);
+          ocrBtn.textContent = 'OCR';
+          ocrBtn.disabled = false;
+          showToast('OCR failed. Please try again.');
+        });
+    } else {
+      console.log('Loading Tesseract.js from local file');
+      // Load Tesseract.js from local file
+      const script = document.createElement('script');
+      script.src = chrome.runtime.getURL('tesseract.min.js');
+      script.onerror = (err) => {
+        console.error('Failed to load Tesseract.js:', err);
+        ocrBtn.textContent = 'OCR';
+        ocrBtn.disabled = false;
+        showToast('Failed to load OCR library.');
+      };
+      script.onload = () => {
+        console.log('Tesseract.js loaded');
+        Tesseract.recognize(file, 'eng', {
+          logger: m => console.log(m)
+        })
+          .then(({ data: { text } }) => {
+            console.log('OCR result:', text);
+            noteInput.innerHTML += text;
+            ocrBtn.textContent = 'OCR';
+            ocrBtn.disabled = false;
+          })
+          .catch(err => {
+            console.error('OCR error:', err);
+            ocrBtn.textContent = 'OCR';
+            ocrBtn.disabled = false;
+            showToast('OCR failed. Please try again.');
+          });
+      };
+      document.head.appendChild(script);
+    }
+  });
+
+
+
+
+
+
+
+
+
   let notes = [];
   let paperLibrary = [];
   let citationHistory = [];
 
-  // Load notes, theme, paper library, and citation history
-  chrome.storage.local.get(['notes', 'darkMode', 'paperLibrary', 'citationHistory'], (result) => {
+  // Load notes, theme, paper library, citation history, and paper views
+  chrome.storage.local.get(['notes', 'darkMode', 'paperLibrary', 'citationHistory', 'paperViews'], (result) => {
     notes = result.notes || [];
     paperLibrary = result.paperLibrary || [];
     citationHistory = result.citationHistory || [];
+    paperViews = result.paperViews || [];
     if (result.darkMode) {
       document.documentElement.setAttribute('data-theme', 'dark');
     }
@@ -96,6 +358,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function saveCitationHistory() {
     chrome.storage.local.set({ citationHistory });
+  }
+
+  function savePaperViews() {
+    chrome.storage.local.set({ paperViews });
   }
 
   function renderNotes() {
@@ -403,6 +669,19 @@ document.addEventListener('DOMContentLoaded', () => {
   libraryYearFilter.addEventListener('change', renderPaperLibrary);
   libraryTagFilter.addEventListener('change', renderPaperLibrary);
 
+  const analyticsSection = document.getElementById('analyticsSection');
+  const toggleAnalyticsBtn = document.getElementById('toggleAnalyticsBtn');
+  const analyticsContent = document.getElementById('analyticsContent');
+  const papersReadWeek = document.getElementById('papersReadWeek');
+  const papersReadMonth = document.getElementById('papersReadMonth');
+  const totalCitationsAnalytics = document.getElementById('totalCitationsAnalytics');
+  const librarySize = document.getElementById('librarySize');
+  const topJournalsList = document.getElementById('topJournalsList');
+  const topAuthorsList = document.getElementById('topAuthorsList');
+  const citationTrendsList = document.getElementById('citationTrendsList');
+
+  let paperViews = [];
+
   // ==================== RESEARCH ASSISTANT ====================
 
   const researchSection = document.getElementById('researchSection');
@@ -586,6 +865,22 @@ document.addEventListener('DOMContentLoaded', () => {
       paperAbstract.style.display = 'none';
       toggleAbstractBtn.style.display = 'none';
     }
+
+    // Track paper view
+    const existingView = paperViews.find(v => v.doi === paper.doi);
+    if (existingView) {
+      existingView.lastViewed = Date.now();
+      existingView.viewCount++;
+    } else {
+      paperViews.unshift({
+        doi: paper.doi,
+        title: paper.title,
+        firstViewed: Date.now(),
+        lastViewed: Date.now(),
+        viewCount: 1
+      });
+    }
+    savePaperViews();
   }
 
   // Toggle abstract
@@ -782,46 +1077,544 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Toggle history dashboard
-toggleHistoryBtn.addEventListener('click', () => {
-  const isHidden = historyContent.style.display === 'none';
-  historyContent.style.display = isHidden ? 'block' : 'none';
-  if (isHidden) renderCitationHistory();
-});
+  toggleHistoryBtn.addEventListener('click', () => {
+    const isHidden = historyContent.style.display === 'none';
+    historyContent.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) renderCitationHistory();
+  });
 
+  // Toggle analytics dashboard
+  toggleAnalyticsBtn.addEventListener('click', () => {
+    const isHidden = analyticsContent.style.display === 'none';
+    analyticsContent.style.display = isHidden ? 'block' : 'none';
+    if (isHidden) renderAnalytics();
+  });
 
-function renderCitationHistory() {
-  const total = citationHistory.reduce((sum, h) => sum + h.count, 0);
-  const unique = new Set(citationHistory.map(h => h.doi)).size;
-
-  
-  totalCitations.textContent = total;
-  uniquePapers.textContent = unique;
-
- 
-  if (citationHistory.length === 0) {
-    historyList.innerHTML = '';
-    historyList.appendChild(historyEmpty);
-    historyEmpty.style.display = 'block';
-    return;
+  function renderAnalytics() {
+    // Reading statistics
+    const now = Date.now();
+    const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
+    const monthAgo = now - (30 * 24 * 60 * 60 * 1000);
+    
+    const papersReadWeekCount = paperViews.filter(v => v.lastViewed >= weekAgo).length;
+    const papersReadMonthCount = paperViews.filter(v => v.lastViewed >= monthAgo).length;
+    const totalCitationsCount = citationHistory.reduce((sum, h) => sum + h.count, 0);
+    
+    papersReadWeek.textContent = papersReadWeekCount;
+    papersReadMonth.textContent = papersReadMonthCount;
+    totalCitationsAnalytics.textContent = totalCitationsCount;
+    librarySize.textContent = paperLibrary.length;
+    
+    // Top journals
+    const journalCounts = {};
+    paperLibrary.forEach(p => {
+      if (p.journal) {
+        journalCounts[p.journal] = (journalCounts[p.journal] || 0) + 1;
+      }
+    });
+    const topJournals = Object.entries(journalCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    topJournalsList.innerHTML = topJournals.length === 0 
+      ? '<div class="empty-state">No data yet</div>'
+      : topJournals.map(([journal, count]) => `
+        <div class="analytics-list-item">
+          <span class="item-name">${journal}</span>
+          <span class="item-count">${count}</span>
+        </div>
+      `).join('');
+    
+    // Top authors
+    const authorCounts = {};
+    paperLibrary.forEach(p => {
+      p.authors.forEach(a => {
+        authorCounts[a] = (authorCounts[a] || 0) + 1;
+      });
+    });
+    const topAuthors = Object.entries(authorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5);
+    
+    topAuthorsList.innerHTML = topAuthors.length === 0
+      ? '<div class="empty-state">No data yet</div>'
+      : topAuthors.map(([author, count]) => `
+        <div class="analytics-list-item">
+          <span class="item-name">${author}</span>
+          <span class="item-count">${count}</span>
+        </div>
+      `).join('');
+    
+    // Citation trends (last 7 days)
+    const trends = [];
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = now - (i * 24 * 60 * 60 * 1000);
+      const dayEnd = dayStart + (24 * 60 * 60 * 1000);
+      const dayCitations = citationHistory.filter(h => h.lastUsed >= dayStart && h.lastUsed < dayEnd).length;
+      const date = new Date(dayStart).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      trends.push({ date, count: dayCitations });
+    }
+    
+    citationTrendsList.innerHTML = trends.map(t => `
+      <div class="analytics-list-item">
+        <span class="item-name">${t.date}</span>
+        <span class="item-count">${t.count}</span>
+      </div>
+    `).join('');
   }
 
-  historyList.innerHTML = '';
-  citationHistory.slice(0, 10).forEach(h => {
-    const paper = paperLibrary.find(p => p.doi === h.doi);
-    const title = paper ? paper.title : h.doi;
-    const div = document.createElement('div');
-    div.className = 'history-item';
-    div.innerHTML = `
-      <div class="history-item-title">${title}</div>
-      <div class="history-item-meta">
-        <span class="history-count">${h.count}x</span>
-        <span class="history-format">${h.format.toUpperCase()}</span>
-      </div>
-    `;
-    historyList.appendChild(div);
-  });
-}
+  function renderCitationHistory() {
+    const total = citationHistory.reduce((sum, h) => sum + h.count, 0);
+    const unique = new Set(citationHistory.map(h => h.doi)).size;
+    
+    totalCitations.textContent = total;
+    uniquePapers.textContent = unique;
+
+    if (citationHistory.length === 0) {
+      historyList.innerHTML = '';
+      historyList.appendChild(historyEmpty);
+      historyEmpty.style.display = 'block';
+      return;
+    }
+
+    historyList.innerHTML = '';
+    citationHistory.slice(0, 10).forEach(h => {
+      const paper = paperLibrary.find(p => p.doi === h.doi);
+      const title = paper ? paper.title : h.doi;
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <div class="history-item-title">${title}</div>
+        <div class="history-item-meta">
+          <span class="history-count">${h.count}x</span>
+          <span class="history-format">${h.format.toUpperCase()}</span>
+        </div>
+      `;
+      historyList.appendChild(div);
+    });
+  }
 
   // Initialize research assistant
   detectPaperFromTab();
+
+  // ==================== NOTE ENHANCEMENTS ====================
+  
+  let folders = ['uncategorized'];
+  let currentFolder = 'all';
+  let editingNoteId = null;
+
+  // Templates
+  const templates = {
+    meeting: {
+      title: 'Meeting Notes',
+      content: '<h2>Meeting Notes</h2><p><b>Date:</b> </p><p><b>Attendees:</b> </p><p><b>Agenda:</b></p><ul><li></li></ul><p><b>Action Items:</b></p><ul><li></li></ul>'
+    },
+    research: {
+      title: 'Research Notes',
+      content: '<h2>Research Notes</h2><p><b>Topic:</b> </p><p><b>Source:</b> </p><p><b>Key Points:</b></p><ul><li></li></ul><p><b>Questions:</b></p><ul><li></li></ul><p><b>Next Steps:</b></p><ul><li></li></ul>'
+    },
+    idea: {
+      title: 'Idea/Brainstorm',
+      content: '<h2>Idea</h2><p><b>Description:</b> </p><p><b>Potential Benefits:</b></p><ul><li></li></ul><p><b>Challenges:</b></p><ul><li></li></ul><p><b>Related Ideas:</b></p><ul><li></li></ul>'
+    }
+  };
+
+  // New DOM elements
+  const noteTitle = document.getElementById('noteTitle');
+  const templateSelector = document.getElementById('templateSelector');
+  const versionHistoryBtn = document.getElementById('versionHistoryBtn');
+  const versionModal = document.getElementById('versionModal');
+  const versionList = document.getElementById('versionList');
+  const closeVersionModal = document.getElementById('closeVersionModal');
+  const linkNoteBtn = document.getElementById('linkNoteBtn');
+  const linkModal = document.getElementById('linkModal');
+  const linkSearch = document.getElementById('linkSearch');
+  const linkList = document.getElementById('linkList');
+  const closeLinkModal = document.getElementById('closeLinkModal');
+  const foldersBar = document.getElementById('foldersBar');
+  const tagCloud = document.getElementById('tagCloud');
+  const addFolderBtn = document.getElementById('addFolderBtn');
+
+  // Update storage loading
+  chrome.storage.local.get(['notes', 'darkMode', 'paperLibrary', 'citationHistory', 'paperViews', 'folders'], (result) => {
+    notes = result.notes || [];
+    paperLibrary = result.paperLibrary || [];
+    citationHistory = result.citationHistory || [];
+    paperViews = result.paperViews || [];
+    folders = result.folders || ['uncategorized'];
+    if (result.darkMode) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+    renderNotes();
+    renderPaperLibrary();
+    updateYearFilter();
+    updateTagFilter();
+    renderFolders();
+    renderTagCloud();
+  });
+
+  // Save folders
+  function saveFolders() {
+    chrome.storage.local.set({ folders });
+  }
+
+  // Template selector
+  templateSelector.addEventListener('change', (e) => {
+    const template = templates[e.target.value];
+    if (template) {
+      noteTitle.value = template.title;
+      noteInput.innerHTML = template.content;
+    } else {
+      noteTitle.value = '';
+      noteInput.innerHTML = '';
+    }
+  });
+
+  // Extract tags from content (hashtags)
+  function extractTags(content) {
+    const tagRegex = /#(\w+)/g;
+    const tags = [];
+    let match;
+    while ((match = tagRegex.exec(content)) !== null) {
+      tags.push(match[1]);
+    }
+    return tags;
+  }
+
+  // Render folders
+  function renderFolders() {
+    foldersBar.innerHTML = `
+      <button class="folder-btn ${currentFolder === 'all' ? 'active' : ''}" data-folder="all">All Notes</button>
+      <button class="folder-btn ${currentFolder === 'uncategorized' ? 'active' : ''}" data-folder="uncategorized">Uncategorized</button>
+    `;
+    
+    folders.forEach(folder => {
+      if (folder !== 'uncategorized') {
+        foldersBar.innerHTML += `
+          <button class="folder-btn ${currentFolder === folder ? 'active' : ''}" data-folder="${folder}">${folder}</button>
+        `;
+      }
+    });
+    
+    foldersBar.innerHTML += `<button class="folder-btn" id="addFolderBtn">+ New Folder</button>`;
+    
+    // Re-attach event listeners
+    document.querySelectorAll('.folder-btn[data-folder]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentFolder = btn.dataset.folder;
+        renderFolders();
+        renderNotes();
+      });
+    });
+    
+    document.getElementById('addFolderBtn').addEventListener('click', () => {
+      const folderName = prompt('Enter folder name:');
+      if (folderName && folderName.trim()) {
+        folders.push(folderName.trim());
+        saveFolders();
+        renderFolders();
+      }
+    });
+  }
+
+  // Render tag cloud
+  function renderTagCloud() {
+    const allTags = {};
+    notes.forEach(note => {
+      if (note.tags) {
+        note.tags.forEach(tag => {
+          allTags[tag] = (allTags[tag] || 0) + 1;
+        });
+      }
+    });
+    
+    const sortedTags = Object.entries(allTags).sort((a, b) => b[1] - a[1]);
+    
+    tagCloud.innerHTML = sortedTags.length === 0 
+      ? '<span class="no-tags">No tags yet. Use #tag in notes.</span>'
+      : sortedTags.map(([tag, count]) => `
+        <span class="tag-cloud-item" data-tag="${tag}">#${tag} (${count})</span>
+      `).join('');
+    
+    document.querySelectorAll('.tag-cloud-item').forEach(item => {
+      item.addEventListener('click', () => {
+        searchInput.value = '#' + item.dataset.tag;
+        renderNotes();
+      });
+    });
+  }
+
+  // Update renderNotes to include folder filtering and new note structure
+  function renderNotes() {
+    const searchTerm = searchInput.value.toLowerCase();
+    let filteredNotes = notes.filter(note => {
+      const matchesSearch = note.text.toLowerCase().includes(searchTerm) ||
+        note.title.toLowerCase().includes(searchTerm) ||
+        (note.tags && note.tags.some(t => t.toLowerCase().includes(searchTerm)));
+      const matchesFolder = currentFolder === 'all' || note.folder === currentFolder;
+      return matchesSearch && matchesFolder;
+    });
+
+    // Sort: pinned first, then by date
+    filteredNotes.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return (b.updatedAt || b.createdAt) - (a.updatedAt || a.createdAt);
+    });
+
+    notesList.innerHTML = '';
+    filteredNotes.forEach(note => {
+      const noteEl = createNoteElement(note);
+      notesList.appendChild(noteEl);
+    });
+
+    if (filteredNotes.length === 0) {
+      notesList.appendChild(emptyState);
+      emptyState.style.display = 'block';
+    } else {
+      emptyState.style.display = 'none';
+    }
+  }
+
+  // Update createNoteElement to show new features
+  function createNoteElement(note) {
+    const div = document.createElement('div');
+    div.className = `note-item${note.pinned ? ' pinned' : ''}`;
+    div.draggable = true;
+    
+    const linkedNotesHtml = note.linkedNotes && note.linkedNotes.length > 0 
+      ? `<div class="linked-notes">📎 ${note.linkedNotes.length} linked</div>`
+      : '';
+    
+    const tagsHtml = note.tags && note.tags.length > 0
+      ? `<div class="note-tags">${note.tags.map(t => `<span class="note-tag">#${t}</span>`).join('')}</div>`
+      : '';
+    
+    const folderHtml = note.folder 
+      ? `<span class="note-folder">${note.folder}</span>`
+      : '';
+    
+    div.innerHTML = `
+      <div class="note-header">
+        <div class="note-title">${note.title || 'Untitled'}</div>
+        <div class="note-actions">
+          <button class="btn-icon btn-pin" title="Pin note">
+            <svg viewBox="0 0 24 24"><path d="M16 12V4h1V2H7v2h1v8l-2 2v2h5.2v6h1.6v-6H18v-2l-2-2z"/></svg>
+          </button>
+          <button class="btn-icon btn-edit" title="Edit note">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+          <button class="btn-icon btn-delete" title="Delete note">
+            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="note-content">${note.text}</div>
+      ${tagsHtml}
+      ${linkedNotesHtml}
+      <div class="note-meta">
+        ${folderHtml}
+        <span class="note-time">${formatRelativeTime(note.updatedAt || note.createdAt)}</span>
+      </div>
+    `;
+
+    // Drag and drop
+    div.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', note.id);
+    });
+    
+    div.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    
+    div.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const draggedId = e.dataTransfer.getData('text/plain');
+      const targetId = note.id;
+      if (draggedId !== targetId) {
+        const draggedIndex = notes.findIndex(n => n.id === draggedId);
+        const targetIndex = notes.findIndex(n => n.id === targetId);
+        [notes[draggedIndex], notes[targetIndex]] = [notes[targetIndex], notes[draggedIndex]];
+        saveNotes();
+        renderNotes();
+      }
+    });
+
+    // Event listeners
+    div.querySelector('.btn-pin').addEventListener('click', () => {
+      note.pinned = !note.pinned;
+      saveNotes();
+      renderNotes();
+    });
+
+    div.querySelector('.btn-delete').addEventListener('click', () => {
+      notes = notes.filter(n => n.id !== note.id);
+      saveNotes();
+      renderNotes();
+      renderTagCloud();
+    });
+
+    div.querySelector('.btn-edit').addEventListener('click', () => {
+      noteTitle.value = note.title || '';
+      noteInput.innerHTML = note.text;
+      editingNoteId = note.id;
+      addBtn.textContent = 'Update Note';
+      addBtn.onclick = () => updateNote(note.id);
+    });
+
+    return div;
+  }
+
+  // Update addBtn to use new structure
+  addBtn.onclick = () => {
+    const title = noteTitle.value.trim() || 'Untitled Note';
+    const content = noteInput.innerHTML.trim();
+    const tags = extractTags(content);
+    
+    if (!content) {
+      showToast('Please enter a note');
+      return;
+    }
+
+    const note = {
+      id: Date.now().toString(),
+      title,
+      text: content,
+      tags,
+      folder: currentFolder === 'all' ? 'uncategorized' : currentFolder,
+      linkedNotes: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      versions: [{ content, timestamp: Date.now() }],
+      pinned: false
+    };
+
+    notes.unshift(note);
+    saveNotes();
+    renderNotes();
+    renderTagCloud();
+    
+    noteTitle.value = '';
+    noteInput.innerHTML = '';
+    templateSelector.value = '';
+    showToast('Note added');
+  };
+
+  // Update note function
+  function updateNote(noteId) {
+    const note = notes.find(n => n.id === noteId);
+    if (note) {
+      note.title = noteTitle.value.trim() || 'Untitled Note';
+      note.text = noteInput.innerHTML.trim();
+      note.tags = extractTags(note.text);
+      note.updatedAt = Date.now();
+      if (!note.versions) note.versions = [];
+      note.versions.push({ content: note.text, timestamp: Date.now() });
+      
+      saveNotes();
+      renderNotes();
+      renderTagCloud();
+      
+      noteTitle.value = '';
+      noteInput.innerHTML = '';
+      editingNoteId = null;
+      addBtn.textContent = 'Add Note';
+      addBtn.onclick = null;
+      showToast('Note updated');
+    }
+  }
+
+  // Version history
+  versionHistoryBtn.addEventListener('click', () => {
+    if (editingNoteId) {
+      const note = notes.find(n => n.id === editingNoteId);
+      if (note) {
+        renderVersionHistory(note);
+        versionModal.style.display = 'flex';
+      }
+    } else {
+      showToast('Edit a note first to view history');
+    }
+  });
+
+  function renderVersionHistory(note) {
+    const versions = note.versions || [];
+    versionList.innerHTML = versions.map((v, i) => `
+      <div class="version-item">
+        <div class="version-meta">
+          <span class="version-number">Version ${versions.length - i}</span>
+          <span class="version-date">${new Date(v.timestamp).toLocaleString()}</span>
+        </div>
+        <div class="version-content">${v.content}</div>
+        <button class="btn-small btn-secondary" onclick="restoreVersion('${note.id}', ${i})">Restore</button>
+      </div>
+    `).join('');
+  }
+
+  window.restoreVersion = function(noteId, versionIndex) {
+    const note = notes.find(n => n.id === noteId);
+    if (note && note.versions) {
+      note.text = note.versions[versionIndex].content;
+      note.updatedAt = Date.now();
+      note.versions.push({ content: note.text, timestamp: Date.now() });
+      saveNotes();
+      noteInput.innerHTML = note.text;
+      renderVersionHistory(note);
+      showToast('Version restored');
+    }
+  };
+
+  closeVersionModal.addEventListener('click', () => {
+    versionModal.style.display = 'none';
+  });
+
+  // Note linking
+  linkNoteBtn.addEventListener('click', () => {
+    if (editingNoteId) {
+      linkModal.style.display = 'flex';
+      renderLinkList();
+    } else {
+      showToast('Edit a note first to link');
+    }
+  });
+
+  linkSearch.addEventListener('input', renderLinkList);
+
+  function renderLinkList() {
+    const searchTerm = linkSearch.value.toLowerCase();
+    
+    const filteredNotes = notes.filter(n => 
+      n.id !== editingNoteId && 
+      (n.title.toLowerCase().includes(searchTerm) || n.text.toLowerCase().includes(searchTerm))
+    );
+    
+    linkList.innerHTML = filteredNotes.map(n => `
+      <div class="link-item" data-id="${n.id}">
+        <div class="link-title">${n.title || 'Untitled'}</div>
+        <div class="link-preview">${n.text.substring(0, 100)}...</div>
+        <button class="btn-small btn-primary" onclick="linkNote('${n.id}')">Link</button>
+      </div>
+    `).join('');
+  }
+
+  window.linkNote = function(targetId) {
+    const currentNote = notes.find(n => n.id === editingNoteId);
+    const targetNote = notes.find(n => n.id === targetId);
+    
+    if (currentNote && targetNote) {
+      if (!currentNote.linkedNotes) currentNote.linkedNotes = [];
+      if (!targetNote.linkedNotes) targetNote.linkedNotes = [];
+      if (!currentNote.linkedNotes.includes(targetId)) {
+        currentNote.linkedNotes.push(targetId);
+        targetNote.linkedNotes.push(editingNoteId);
+        saveNotes();
+        linkModal.style.display = 'none';
+        showToast('Notes linked');
+      }
+    }
+  };
+
+  closeLinkModal.addEventListener('click', () => {
+    linkModal.style.display = 'none';
+  });
 });

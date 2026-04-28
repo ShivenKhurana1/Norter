@@ -18,13 +18,111 @@
       </div>
     </header>
 
+    <!-- Folders & Tags Section -->
+    <div class="folders-tags-section">
+      <div class="folders-bar" id="foldersBar">
+        <button class="folder-btn active" data-folder="all">All Notes</button>
+        <button class="folder-btn" data-folder="uncategorized">Uncategorized</button>
+        <button class="folder-btn" id="addFolderBtn">+ New Folder</button>
+      </div>
+      <div class="tag-cloud" id="tagCloud"></div>
+    </div>
+
+    <!-- Template Section -->
+    <div class="template-section">
+      <select id="templateSelector" class="search-input">
+        <option value="">Blank Note</option>
+        <option value="meeting">Meeting Notes</option>
+        <option value="research">Research Notes</option>
+        <option value="idea">Idea/Brainstorm</option>
+      </select>
+    </div>
+
+    <!-- Rich Text Editor Toolbar -->
+    <div class="editor-toolbar">
+      <button class="toolbar-btn" data-command="bold" title="Bold"><b>B</b></button>
+      <button class="toolbar-btn" data-command="italic" title="Italic"><i>I</i></button>
+      <button class="toolbar-btn" data-command="underline" title="Underline"><u>U</u></button>
+      <button class="toolbar-btn" data-command="strikeThrough" title="Strikethrough"><s>S</s></button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" data-command="insertUnorderedList" title="Bullet List">•</button>
+      <button class="toolbar-btn" data-command="insertOrderedList" title="Numbered List">1.</button>
+      <button class="toolbar-btn" data-command="formatBlock" data-value="h1" title="Heading 1">H1</button>
+      <button class="toolbar-btn" data-command="formatBlock" data-value="h2" title="Heading 2">H2</button>
+      <button class="toolbar-btn" data-command="formatBlock" data-value="h3" title="Heading 3">H3</button>
+      <div class="toolbar-divider"></div>
+      <button class="toolbar-btn" data-command="createLink" title="Insert Link">Link</button>
+      <button class="toolbar-btn" data-command="unlink" title="Remove Link">Unlink</button>
+      <button class="toolbar-btn" id="linkNoteBtn" title="Link to Another Note">Link Note</button>
+    </div>
+
     <div class="input-section">
-      <textarea 
+      <input type="text" id="noteTitle" placeholder="Note title..." class="note-title-input">
+      <div 
         id="noteInput" 
-        placeholder="Type your note here... (Markdown supported: **bold**, *italic*, `code`)"
-        rows="3"
-      ></textarea>
-      <button id="addBtn" class="btn-primary">Add Note</button>
+        contenteditable="true"
+        placeholder="Type your note here..."
+        class="rich-text-editor"
+      ></div>
+      <div class="input-actions">
+        <button id="addBtn" class="btn-primary">Add Note</button>
+        <button id="versionHistoryBtn" class="btn-secondary btn-small">History</button>
+      </div>
+    </div>
+
+    <!-- Tasks Section -->
+    <div class="tasks-section">
+      <div class="tasks-header">
+        <h3>Tasks</h3>
+        <button id="toggleTasksBtn" class="btn-icon">▼</button>
+      </div>
+      <div class="tasks-content" id="tasksContent">
+        <div class="task-input-row">
+          <input type="text" id="taskInput" placeholder="Add task..." class="search-input">
+          <input type="datetime-local" id="taskReminder" class="search-input">
+          <button id="addTaskBtn" class="btn-primary btn-small">Add</button>
+        </div>
+        <div class="tasks-list" id="tasksList"></div>
+      </div>
+    </div>
+
+    <!-- Voice-to-Text Section -->
+    <div class="voice-section">
+      <button id="voiceBtn" class="btn-secondary btn-small">Dictation</button>
+    </div>
+
+    <!-- OCR Section -->
+    <div class="ocr-section">
+      <input type="file" id="ocrInput" accept="image/*" style="display:none">
+      <button id="ocrBtn" class="btn-secondary btn-small">OCR</button>
+    </div>
+
+
+
+
+
+
+    <!-- Version History Modal -->
+    <div class="modal" id="versionModal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Version History</h3>
+          <button class="modal-close" id="closeVersionModal">×</button>
+        </div>
+        <div class="version-list" id="versionList"></div>
+      </div>
+    </div>
+
+    <!-- Note Linking Modal -->
+    <div class="modal" id="linkModal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Link to Note</h3>
+          <button class="modal-close" id="closeLinkModal">×</button>
+        </div>
+        <input type="text" id="linkSearch" placeholder="Search notes to link..." class="search-input">
+        <div class="link-list" id="linkList"></div>
+      </div>
     </div>
 
     <!-- Research Assistant Section -->
@@ -68,7 +166,7 @@
     <!-- Paper Library Section -->
     <div class="library-section" id="librarySection">
       <div class="library-header">
-        <h3>📚 Paper Library</h3>
+        <h3>Paper Library</h3>
         <div class="library-filters">
           <input type="text" id="librarySearch" placeholder="Search by title, author, journal..." class="search-input">
           <select id="libraryYearFilter" class="search-input">
@@ -89,7 +187,7 @@
     <!-- Citation History Dashboard -->
     <div class="history-section" id="historySection">
       <div class="history-header">
-        <h3>📊 Citation History</h3>
+        <h3>Citation History</h3>
         <button id="toggleHistoryBtn" class="btn-icon" title="Toggle history">
           <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
         </button>
@@ -109,6 +207,48 @@
           <div class="empty-state" id="historyEmpty">
             <p>No citation history yet.</p>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics Dashboard -->
+    <div class="analytics-section" id="analyticsSection">
+      <div class="analytics-header">
+        <h3>📈 Analytics</h3>
+        <button id="toggleAnalyticsBtn" class="btn-icon" title="Toggle analytics">
+          <svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+        </button>
+      </div>
+      <div class="analytics-content" id="analyticsContent" style="display: none;">
+        <div class="analytics-grid">
+          <div class="analytics-card">
+            <div class="card-title">Papers Read (Week)</div>
+            <div class="card-value" id="papersReadWeek">0</div>
+          </div>
+          <div class="analytics-card">
+            <div class="card-title">Papers Read (Month)</div>
+            <div class="card-value" id="papersReadMonth">0</div>
+          </div>
+          <div class="analytics-card">
+            <div class="card-title">Total Citations</div>
+            <div class="card-value" id="totalCitationsAnalytics">0</div>
+          </div>
+          <div class="analytics-card">
+            <div class="card-title">Library Size</div>
+            <div class="card-value" id="librarySize">0</div>
+          </div>
+        </div>
+        <div class="analytics-list-section">
+          <h4>Top Journals</h4>
+          <div class="analytics-list" id="topJournalsList"></div>
+        </div>
+        <div class="analytics-list-section">
+          <h4>Top Authors</h4>
+          <div class="analytics-list" id="topAuthorsList"></div>
+        </div>
+        <div class="analytics-list-section">
+          <h4>Citation Trends (Last 7 Days)</h4>
+          <div class="analytics-list" id="citationTrendsList"></div>
         </div>
       </div>
     </div>
