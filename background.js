@@ -42,7 +42,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       
       chrome.notifications.create({
         type: "basic",
-        iconUrl: "icon128.png",
         title: "Norter",
         message: "Content captured successfully!"
       });
@@ -60,7 +59,6 @@ chrome.alarms.onAlarm.addListener((alarm) => {
       if (task && !task.completed) {
         chrome.notifications.create({
           type: "basic",
-          iconUrl: "icon128.png",
           title: "Task Reminder",
           message: task.text
         });

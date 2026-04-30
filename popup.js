@@ -1,6 +1,4 @@
-console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM Content Loaded');
   const noteInput = document.getElementById('noteInput');
   const addBtn = document.getElementById('addBtn');
   const notesList = document.getElementById('notesList');
@@ -11,14 +9,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearAllBtn = document.getElementById('clearAllBtn');
   const themeToggle = document.getElementById('themeToggle');
 
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab + 'Tab').classList.add('active');
+    });
+  });
+
   // Rich text editor toolbar - attach event listeners immediately
-  const toolbarButtons = document.querySelectorAll('.toolbar-btn[data-command]');
-  console.log('Toolbar buttons found:', toolbarButtons.length);
-  
-  toolbarButtons.forEach(btn => {
+  document.querySelectorAll('.toolbar-btn[data-command]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
-      console.log('Button clicked:', btn.dataset.command);
       const command = btn.dataset.command;
       const value = btn.dataset.value || null;
       document.execCommand(command, false, value);
@@ -43,12 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const addTaskBtn = document.getElementById('addTaskBtn');
 
   const tasksList = document.getElementById('tasksList');
-
-  const tasksEmpty = document.getElementById('tasksEmpty');
-
-  const toggleTasksBtn = document.getElementById('toggleTasksBtn');
-
-  const tasksContent = document.getElementById('tasksContent');
 
   // Load tasks from storage
   chrome.storage.local.get(['tasks'], (result) => {
@@ -134,39 +132,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Delete task
   function deleteTask(taskId) {
-    console.log('Delete task called:', taskId);
     tasks = tasks.filter(t => t.id !== taskId);
     chrome.alarms.clear(`task-reminder-${taskId}`);
     saveTasks();
     renderTasks();
   }
 
-  // Toggle tasks visibility
-  toggleTasksBtn.addEventListener('click', () => {
-    tasksContent.style.display = tasksContent.style.display === 'none' ? 'block' : 'none';
-  });
-
   // Voice-to-text
   const voiceBtn = document.getElementById('voiceBtn');
-  console.log('Voice button found:', voiceBtn);
   let recognition = null;
 
   if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    console.log('Speech recognition API available');
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
     recognition.continuous = false;
     recognition.interimResults = false;
     
     voiceBtn.addEventListener('click', () => {
-      console.log('Voice button clicked');
       recognition.start();
       voiceBtn.textContent = 'Listening...';
       voiceBtn.disabled = true;
     });
     
     recognition.onresult = (event) => {
-      console.log('Speech recognition result:', event);
       if (event.results[0].isFinal) {
         const transcript = event.results[0][0].transcript;
         noteInput.innerHTML += transcript + ' ';
@@ -182,89 +170,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     
     recognition.onend = () => {
-      console.log('Speech recognition ended');
       voiceBtn.textContent = 'Dictation';
       voiceBtn.disabled = false;
     };
   } else {
-    console.log('Speech recognition API not available');
     voiceBtn.style.display = 'none';
   }
-
-  // OCR (requires Tesseract.js)
-  const ocrBtn = document.getElementById('ocrBtn');
-  const ocrInput = document.getElementById('ocrInput');
-  console.log('OCR button found:', ocrBtn);
-  console.log('OCR input found:', ocrInput);
-  
-  ocrBtn.addEventListener('click', () => {
-    console.log('OCR button clicked');
-    ocrInput.click();
-  });
-  
-  ocrInput.addEventListener('change', (e) => {
-    console.log('OCR file selected');
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    console.log('Processing file:', file.name);
-    ocrBtn.textContent = 'Processing...';
-    ocrBtn.disabled = true;
-    
-    // Try to use Tesseract.js if available
-    if (typeof Tesseract !== 'undefined') {
-      console.log('Tesseract already loaded');
-      Tesseract.recognize(file, 'eng', {
-        logger: m => console.log(m)
-      })
-        .then(({ data: { text } }) => {
-          console.log('OCR result:', text);
-          noteInput.innerHTML += text;
-          ocrBtn.textContent = 'OCR';
-          ocrBtn.disabled = false;
-        })
-        .catch(err => {
-          console.error('OCR error:', err);
-          ocrBtn.textContent = 'OCR';
-          ocrBtn.disabled = false;
-          showToast('OCR failed. Please try again.');
-        });
-    } else {
-      console.log('Loading Tesseract.js from local file');
-      // Load Tesseract.js from local file
-      const script = document.createElement('script');
-      script.src = chrome.runtime.getURL('tesseract.min.js');
-      script.onerror = (err) => {
-        console.error('Failed to load Tesseract.js:', err);
-        ocrBtn.textContent = 'OCR';
-        ocrBtn.disabled = false;
-        showToast('Failed to load OCR library.');
-      };
-      script.onload = () => {
-        console.log('Tesseract.js loaded');
-        Tesseract.recognize(file, 'eng', {
-          logger: m => console.log(m)
-        })
-          .then(({ data: { text } }) => {
-            console.log('OCR result:', text);
-            noteInput.innerHTML += text;
-            ocrBtn.textContent = 'OCR';
-            ocrBtn.disabled = false;
-          })
-          .catch(err => {
-            console.error('OCR error:', err);
-            ocrBtn.textContent = 'OCR';
-            ocrBtn.disabled = false;
-            showToast('OCR failed. Please try again.');
-          });
-      };
-      document.head.appendChild(script);
-    }
-  });
-
-
-
-
 
 
 
@@ -1013,28 +924,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // Save to library
   saveToLibraryBtn.addEventListener('click', () => {
     if (!currentPaper) return;
-    saveToLibrary(currentPaper);
+    addPaperToLibrary(currentPaper);
   });
 
   function saveToLibrary(paper) {
-    const exists = paperLibrary.find(p => p.doi === paper.doi);
-    if (exists) {
-      showToast('Paper already in library');
-      return;
-    }
-    
-    paperLibrary.unshift({
-      ...paper,
-      addedAt: Date.now(),
-      tags: [],
-      favorite: false,
-      personalNote: ''
-    });
-    savePaperLibrary();
-    renderPaperLibrary();
-    updateYearFilter();
-    updateTagFilter();
-    showToast('Paper added to library');
+    // Use new duplicate detection
+    addPaperToLibrary(paper);
   }
 
   // Export all citations
@@ -1616,5 +1511,200 @@ document.addEventListener('DOMContentLoaded', () => {
 
   closeLinkModal.addEventListener('click', () => {
     linkModal.style.display = 'none';
+  });
+
+  // Full-text search
+  const searchResults = document.getElementById('searchResults');
+  const searchResultsList = document.getElementById('searchResultsList');
+  const searchResultCount = document.getElementById('searchResultCount');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  const closeSearchBtn = document.getElementById('closeSearchBtn');
+
+  function performSearch(query) {
+    if (!query.trim()) {
+      searchResults.style.display = 'none';
+      notesList.style.display = 'block';
+      return;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    const results = notes.filter(note => {
+      const titleMatch = note.title && note.title.toLowerCase().includes(lowerQuery);
+      const contentMatch = note.text && note.text.toLowerCase().includes(lowerQuery);
+      return titleMatch || contentMatch;
+    });
+
+    displaySearchResults(results, query);
+  }
+
+  function displaySearchResults(results, query) {
+    searchResults.style.display = 'block';
+    notesList.style.display = 'none';
+    searchResultCount.textContent = `${results.length} result${results.length !== 1 ? 's' : ''}`;
+    
+    searchResultsList.innerHTML = '';
+    
+    if (results.length === 0) {
+      searchResultsList.innerHTML = '<div class="empty-state"><p>No matches found.</p></div>';
+      return;
+    }
+
+    results.forEach(note => {
+      const div = document.createElement('div');
+      div.className = 'search-result-item';
+      
+      const snippet = getSearchSnippet(note.text, query);
+      const highlightedSnippet = highlightMatches(snippet, query);
+      
+      div.innerHTML = `
+        <div class="search-result-title">${highlightMatches(note.title || 'Untitled', query)}</div>
+        <div class="search-result-snippet">${highlightedSnippet}</div>
+      `;
+      
+      div.addEventListener('click', () => {
+        editNote(note.id);
+        searchResults.style.display = 'none';
+        notesList.style.display = 'block';
+        searchInput.value = '';
+      });
+      
+      searchResultsList.appendChild(div);
+    });
+  }
+
+  function getSearchSnippet(text, query) {
+    if (!text) return '';
+    const lowerText = text.toLowerCase();
+    const lowerQuery = query.toLowerCase();
+    const index = lowerText.indexOf(lowerQuery);
+    
+    if (index === -1) {
+      // Query matched title but not content, show beginning of content
+      return text.substring(0, 150) + (text.length > 150 ? '...' : '');
+    }
+    
+    // Show snippet around the match
+    const start = Math.max(0, index - 60);
+    const end = Math.min(text.length, index + query.length + 60);
+    let snippet = text.substring(start, end);
+    
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet = snippet + '...';
+    
+    return snippet;
+  }
+
+  function highlightMatches(text, query) {
+    if (!text) return '';
+    const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+    return text.replace(regex, '<span class="search-result-match">$1</span>');
+  }
+
+  function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  // Search event listeners
+  searchInput.addEventListener('input', (e) => {
+    performSearch(e.target.value);
+  });
+
+  clearSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    searchResults.style.display = 'none';
+    notesList.style.display = 'block';
+    searchInput.focus();
+  });
+
+  closeSearchBtn.addEventListener('click', () => {
+    searchInput.value = '';
+    searchResults.style.display = 'none';
+    notesList.style.display = 'block';
+  });
+
+  // Duplicate detection
+  const duplicateModal = document.getElementById('duplicateModal');
+  const duplicateMessage = document.getElementById('duplicateMessage');
+  const closeDuplicateModal = document.getElementById('closeDuplicateModal');
+  const cancelDuplicateBtn = document.getElementById('cancelDuplicateBtn');
+  const addAnywayBtn = document.getElementById('addAnywayBtn');
+  const viewExistingBtn = document.getElementById('viewExistingBtn');
+  
+  let pendingPaper = null;
+
+  function checkDuplicate(paper) {
+    // Check by DOI first (most reliable)
+    const doiMatch = paperLibrary.find(p => p.doi && p.doi === paper.doi);
+    if (doiMatch) {
+      return { isDuplicate: true, existing: doiMatch, field: 'DOI' };
+    }
+    
+    // Check by title (case-insensitive, trimmed)
+    const titleMatch = paperLibrary.find(p => 
+      p.title && paper.title && 
+      p.title.toLowerCase().trim() === paper.title.toLowerCase().trim()
+    );
+    if (titleMatch) {
+      return { isDuplicate: true, existing: titleMatch, field: 'title' };
+    }
+    
+    return { isDuplicate: false };
+  }
+
+  function showDuplicateWarning(paper, duplicateInfo) {
+    pendingPaper = paper;
+    duplicateMessage.textContent = `A paper with this ${duplicateInfo.field} already exists in your library: "${duplicateInfo.existing.title}" by ${duplicateInfo.existing.authors}. Do you want to add it anyway?`;
+    duplicateModal.style.display = 'block';
+  }
+
+  function addPaperToLibrary(paper, skipCheck = false) {
+    if (!skipCheck) {
+      const duplicateCheck = checkDuplicate(paper);
+      if (duplicateCheck.isDuplicate) {
+        showDuplicateWarning(paper, duplicateCheck);
+        return false; // Don't add yet, waiting for user choice
+      }
+    }
+    
+    // Add timestamp and ID
+    paper.addedAt = Date.now();
+    paper.id = Date.now().toString();
+    paper.tags = paper.tags || [];
+    paper.favorite = paper.favorite || false;
+    paper.personalNote = paper.personalNote || '';
+    
+    paperLibrary.unshift(paper);
+    chrome.storage.local.set({ paperLibrary });
+    renderPaperLibrary();
+    updateYearFilter();
+    updateTagFilter();
+    showToast('Paper added to library');
+    return true;
+  }
+
+  // Duplicate modal event listeners
+  closeDuplicateModal.addEventListener('click', () => {
+    duplicateModal.style.display = 'none';
+    pendingPaper = null;
+  });
+
+  cancelDuplicateBtn.addEventListener('click', () => {
+    duplicateModal.style.display = 'none';
+    pendingPaper = null;
+  });
+
+  addAnywayBtn.addEventListener('click', () => {
+    if (pendingPaper) {
+      addPaperToLibrary(pendingPaper, true); // skip check this time
+    }
+    duplicateModal.style.display = 'none';
+    pendingPaper = null;
+  });
+
+  viewExistingBtn.addEventListener('click', () => {
+    // Switch to research tab and scroll to the duplicate
+    document.querySelector('[data-tab="research"]').click();
+    duplicateModal.style.display = 'none';
+    pendingPaper = null;
   });
 });
