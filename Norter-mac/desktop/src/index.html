@@ -1,39 +1,107 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Tauri App</title>
-    <script type="module" src="/main.js" defer></script>
-  </head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Norter</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Tab Navigation -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="notes">Notes</button>
+      <button class="tab-btn" data-tab="tasks">Tasks</button>
+      <button class="tab-btn" data-tab="research">Research</button>
+    </div>
 
-  <body>
-    <main class="container">
-      <h1>Welcome to Tauri</h1>
-
-      <div class="row">
-        <a href="https://tauri.app" target="_blank">
-          <img src="/assets/tauri.svg" class="logo tauri" alt="Tauri logo" />
-        </a>
-        <a
-          href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"
-          target="_blank"
-        >
-          <img
-            src="/assets/javascript.svg"
-            class="logo vanilla"
-            alt="JavaScript logo"
-          />
-        </a>
+    <!-- Notes Tab -->
+    <div class="tab-content active" id="notesTab">
+      <div class="section-header">
+        <h2>Notes</h2>
+        <button id="newNoteBtn" class="btn-primary">+ New Note</button>
       </div>
-      <p>Click on the Tauri logo to learn more about the framework</p>
+      
+      <div class="search-section">
+        <input type="text" id="noteSearch" placeholder="Search notes..." class="search-input">
+      </div>
+      
+      <div class="notes-list" id="notesList"></div>
+      
+      <!-- Note Editor Modal -->
+      <div class="modal" id="noteModal" style="display: none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <input type="text" id="noteTitle" placeholder="Note title..." class="title-input">
+            <button id="closeNoteModal" class="btn-icon">×</button>
+          </div>
+          <input type="text" id="noteFolder" placeholder="Folder..." class="folder-input">
+          <input type="text" id="noteTags" placeholder="Tags (comma separated)..." class="tags-input">
+          <textarea id="noteContent" placeholder="Write your note..." class="content-area"></textarea>
+          <div class="modal-footer">
+            <button id="saveNoteBtn" class="btn-primary">Save Note</button>
+            <button id="deleteNoteBtn" class="btn-danger" style="display: none;">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
-      <form class="row" id="greet-form">
-        <input id="greet-input" placeholder="Enter a name..." />
-        <button type="submit">Greet</button>
-      </form>
-      <p id="greet-msg"></p>
-    </main>
-  </body>
+    <!-- Tasks Tab -->
+    <div class="tab-content" id="tasksTab">
+      <div class="section-header">
+        <h2>Tasks</h2>
+      </div>
+      
+      <div class="task-input-row">
+        <input type="text" id="taskInput" placeholder="Add task..." class="search-input">
+        <input type="datetime-local" id="taskDueDate" class="date-input">
+        <button id="addTaskBtn" class="btn-primary">Add</button>
+      </div>
+      
+      <div class="tasks-list" id="tasksList"></div>
+    </div>
+
+    <!-- Research Tab -->
+    <div class="tab-content" id="researchTab">
+      <div class="section-header">
+        <h2>Paper Library</h2>
+        <button id="addPaperBtn" class="btn-primary">+ Add Paper</button>
+      </div>
+      
+      <div class="papers-list" id="papersList"></div>
+      
+      <!-- Add Paper Modal -->
+      <div class="modal" id="paperModal" style="display: none;">
+        <div class="""modal-content">
+          <div class="modal-header">
+            <h3>Add Paper</h3>
+            <button id="closePaperModal" class="btn-icon">×</button>
+          </div>
+          <input type="text" id="paperTitle" placeholder="Title" class="input-field">
+          <input type="text" id="paperAuthors" placeholder="Authors" class="input-field">
+          <input type="text" id="paperYear" placeholder="Year" class="input-field">
+          <input type="text" id="paperDOI" placeholder="DOI" class="input-field">
+          <input type="text" id="paperJournal" placeholder="Journal" class="input-field">
+          <div class="modal-footer">
+            <button id="savePaperBtn" class="btn-primary">Save Paper</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Duplicate Warning Modal -->
+      <div class="modal" id="duplicateModal" style="display: none;">
+        <div class="modal-content">
+          <h3>Paper Already Exists</h3>
+          <p id="duplicateMessage"></p>
+          <div class="modal-footer">
+            <button id="cancelDuplicateBtn" class="btn-secondary">Cancel</button>
+            <button id="addAnywayBtn" class="btn-primary">Add Anyway</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
 </html>
