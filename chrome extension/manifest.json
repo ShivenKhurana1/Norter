@@ -25,7 +25,18 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
     }
-  ]
+  ],
+  "commands": {
+    "open-citation-picker": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "Open citation picker"
+    }
+  }
 }

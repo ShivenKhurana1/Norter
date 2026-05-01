@@ -66,3 +66,17 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     });
   }
 });
+
+// Listen for keyboard shortcut
+chrome.commands.onCommand.addListener((command, tab) => {
+  if (command === 'open-citation-picker') {
+    chrome.tabs.sendMessage(tab.id, { action: 'openCitationPicker' });
+  }
+});
+
+// Also handle from context menu or other triggers
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'citationInserted') {
+    console.log('Citation inserted:', request.paper);
+  }
+});
