@@ -8,96 +8,202 @@
 </head>
 <body>
   <div class="app">
-    <!-- Tab Navigation -->
-    <div class="tab-nav">
-      <button class="tab-btn active" data-tab="notes">Notes</button>
-      <button class="tab-btn" data-tab="tasks">Tasks</button>
-      <button class="tab-btn" data-tab="research">Research</button>
-    </div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">Norter</div>
+      <div class="global-search">
+        <input type="text" id="globalSearchInput" placeholder="Search everything..." class="global-search-input">
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-tab="notes">
+          <span class="nav-icon">◆</span>
+          Notes
+        </button>
+        <button class="nav-item" data-tab="tasks">
+          <span class="nav-icon">○</span>
+          Tasks
+        </button>
+        <button class="nav-item" data-tab="research">
+          <span class="nav-icon">◇</span>
+          Research
+        </button>
+      </nav>
+    </aside>
 
-    <!-- Notes Tab -->
-    <div class="tab-content active" id="notesTab">
-      <div class="section-header">
-        <h2>Notes</h2>
-        <button id="newNoteBtn" class="btn-primary">+ New Note</button>
-      </div>
-      
-      <div class="search-section">
-        <input type="text" id="noteSearch" placeholder="Search notes..." class="search-input">
-      </div>
-      
-      <div class="notes-list" id="notesList"></div>
-      
-      <!-- Note Editor Modal -->
-      <div class="modal" id="noteModal" style="display: none;">
-        <div class="modal-content">
-          <div class="modal-header">
-            <input type="text" id="noteTitle" placeholder="Note title..." class="title-input">
-            <button id="closeNoteModal" class="btn-icon">×</button>
+    <!-- Main Content -->
+    <main class="main">
+      <!-- Search Results Tab -->
+      <div class="tab-content" id="searchTab">
+        <header class="page-header">
+          <div class="header-left">
+            <h1>Search Results</h1>
+            <span class="count" id="searchCount"></span>
           </div>
-          <input type="text" id="noteFolder" placeholder="Folder..." class="folder-input">
-          <input type="text" id="noteTags" placeholder="Tags (comma separated)..." class="tags-input">
-          <textarea id="noteContent" placeholder="Write your note..." class="content-area"></textarea>
-          <div class="modal-footer">
-            <button id="saveNoteBtn" class="btn-primary">Save Note</button>
-            <button id="deleteNoteBtn" class="btn-danger" style="display: none;">Delete</button>
+        </header>
+        <div class="search-results" id="searchResults"></div>
+      </div>
+
+      <!-- Notes Tab -->
+      <div class="tab-content active" id="notesTab">
+        <header class="page-header">
+          <div class="header-left">
+            <h1>Notes</h1>
+            <span class="count" id="notesCount">0 items</span>
           </div>
+          <button id="newNoteBtn" class="btn-primary">New Note</button>
+        </header>
+        
+        <div class="toolbar">
+          <input type="text" id="noteSearch" placeholder="Search notes..." class="search-input">
+        </div>
+        
+        <div class="notes-grid" id="notesList"></div>
+      </div>
+
+      <!-- Tasks Tab -->
+      <div class="tab-content" id="tasksTab">
+        <header class="page-header">
+          <div class="header-left">
+            <h1>Tasks</h1>
+            <span class="count" id="tasksCount">0 items</span>
+          </div>
+        </header>
+        
+        <div class="task-composer">
+          <input type="text" id="taskInput" placeholder="What needs to be done?" class="task-input">
+          <div class="task-composer-row">
+            <div class="date-group">
+              <input type="date" id="taskDueDate" class="date-input">
+              <input type="time" id="taskDueTime" class="time-input">
+            </div>
+            <button id="addTaskBtn" class="btn-primary">Add Task</button>
+          </div>
+        </div>
+        
+        <div class="tasks-list" id="tasksList"></div>
+      </div>
+
+            <!-- Research Tab -->
+
+      <div class="tab-content" id="researchTab">
+
+        <header class="page-header">
+
+          <div class="header-left">
+
+            <h1>Paper Library</h1>
+
+            <span class="count" id="papersCount">0 items</span>
+
+          </div>
+
+          <div class="header-actions">
+
+            <button id="exportBibBtn" class="btn-secondary">Export Bibliography</button>
+
+            <button id="addPaperBtn" class="btn-primary">Add Paper</button>
+
+          </div>
+
+        </header>
+
+        
+
+        <div class="papers-list" id="papersList"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Citation Modal -->
+  <div class="modal" id="citationModal">
+    <div class="modal-content compact">
+      <div class="modal-header">
+        <h3>Citation Formats</h3>
+        <button id="closeCitationModal" class="btn-close">×</button>
+      </div>
+      <div class="citation-formats">
+        <div class="citation-item">
+          <label>APA</label>
+          <input type="text" id="apaCitation" readonly class="citation-input">
+          <button class="btn-copy" data-target="apaCitation">Copy</button>
+        </div>
+        <div class="citation-item">
+          <label>MLA</label>
+          <input type="text" id="mlaCitation" readonly class="citation-input">
+          <button class="btn-copy" data-target="mlaCitation">Copy</button>
+        </div>
+        <div class="citation-item">
+          <label>Chicago</label>
+          <input type="text" id="chicagoCitation" readonly class="citation-input">
+          <button class="btn-copy" data-target="chicagoCitation">Copy</button>
+        </div>
+        <div class="citation-item">
+          <label>BibTeX</label>
+          <textarea id="bibtexCitation" readonly class="citation-textarea"></textarea>
+          <button class="btn-copy" data-target="bibtexCitation">Copy</button>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- Tasks Tab -->
-    <div class="tab-content" id="tasksTab">
-      <div class="section-header">
-        <h2>Tasks</h2>
+  <!-- Note Modal -->
+  <div class="modal" id="noteModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <input type="text" id="noteTitle" placeholder="Untitled Note" class="title-input">
+        <button id="closeNoteModal" class="btn-close">×</button>
       </div>
-      
-      <div class="task-input-row">
-        <input type="text" id="taskInput" placeholder="Add task..." class="search-input">
-        <input type="datetime-local" id="taskDueDate" class="date-input">
-        <button id="addTaskBtn" class="btn-primary">Add</button>
+      <div class="modal-body">
+        <div class="modal-meta">
+          <input type="text" id="noteFolder" placeholder="Folder" class="meta-input">
+          <input type="text" id="noteTags" placeholder="Tags" class="meta-input">
+        </div>
+        <textarea id="noteContent" placeholder="Start writing..." class="content-area"></textarea>
       </div>
-      
-      <div class="tasks-list" id="tasksList"></div>
+      <div class="modal-footer">
+        <button id="deleteNoteBtn" class="btn-text" style="display: none;">Delete</button>
+        <button id="saveNoteBtn" class="btn-primary">Save</button>
+      </div>
     </div>
+  </div>
 
-    <!-- Research Tab -->
-    <div class="tab-content" id="researchTab">
-      <div class="section-header">
-        <h2>Paper Library</h2>
-        <button id="addPaperBtn" class="btn-primary">+ Add Paper</button>
+  <!-- Paper Modal -->
+  <div class="modal" id="paperModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Add Paper</h2>
+        <button id="closePaperModal" class="btn-close">×</button>
       </div>
-      
-      <div class="papers-list" id="papersList"></div>
-      
-      <!-- Add Paper Modal -->
-      <div class="modal" id="paperModal" style="display: none;">
-        <div class="""modal-content">
-          <div class="modal-header">
-            <h3>Add Paper</h3>
-            <button id="closePaperModal" class="btn-icon">×</button>
-          </div>
+      <div class="modal-body">
+        <div class="doi-search">
+          <input type="text" id="doiSearchInput" placeholder="Enter DOI (10.xxxx/...)" class="search-input">
+          <button id="doiSearchBtn" class="btn-secondary">Search</button>
+        </div>
+        <div id="doiSearchStatus" class="search-status"></div>
+        <div class="form-fields">
           <input type="text" id="paperTitle" placeholder="Title" class="input-field">
           <input type="text" id="paperAuthors" placeholder="Authors" class="input-field">
-          <input type="text" id="paperYear" placeholder="Year" class="input-field">
-          <input type="text" id="paperDOI" placeholder="DOI" class="input-field">
-          <input type="text" id="paperJournal" placeholder="Journal" class="input-field">
-          <div class="modal-footer">
-            <button id="savePaperBtn" class="btn-primary">Save Paper</button>
+          <div class="form-row">
+            <input type="text" id="paperYear" placeholder="Year" class="input-field short">
+            <input type="text" id="paperDOI" placeholder="DOI" class="input-field">
           </div>
+          <input type="text" id="paperJournal" placeholder="Journal" class="input-field">
         </div>
       </div>
-      
-      <!-- Duplicate Warning Modal -->
-      <div class="modal" id="duplicateModal" style="display: none;">
-        <div class="modal-content">
-          <h3>Paper Already Exists</h3>
-          <p id="duplicateMessage"></p>
-          <div class="modal-footer">
-            <button id="cancelDuplicateBtn" class="btn-secondary">Cancel</button>
-            <button id="addAnywayBtn" class="btn-primary">Add Anyway</button>
-          </div>
-        </div>
+      <div class="modal-footer">
+        <button id="savePaperBtn" class="btn-primary">Save Paper</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Duplicate Modal -->
+  <div class="modal" id="duplicateModal">
+    <div class="modal-content compact">
+      <h3>Duplicate Detected</h3>
+      <p id="duplicateMessage"></p>
+      <div class="modal-footer">
+        <button id="cancelDuplicateBtn" class="btn-secondary">Cancel</button>
+        <button id="addAnywayBtn" class="btn-primary">Add Anyway</button>
       </div>
     </div>
   </div>

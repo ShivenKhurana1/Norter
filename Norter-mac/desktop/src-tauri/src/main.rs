@@ -391,7 +391,302 @@ fn main() {
             create_paper,
             delete_paper,
             check_duplicate_paper,
+            // Search & Intelligence
+            fts_search_notes,
+            fts_search_papers,
+            trigram_search_notes,
+            semantic_search_notes,
+            semantic_search_papers,
+            set_note_embedding,
+            set_paper_embedding,
+            auto_tag_note,
+            suggest_tags,
+            global_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+// ── Helper: Cosine Similarity ──
+
+fn cosine_similarity(a: &[f64], b: &[f64]) -> f64 {
+    if a.len() != b.len() || a.is_empty() { return 0.0; }
+    let dot: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+    let mag_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
+    let mag_b: f64 = b.iter().map(|x| x * x).sum::<f64>().sqrt();
+    if mag_a == 0.0 || mag_b == 0.0 { return 0.0; }
+    dot / (mag_a * mag_b)
+}
+
+// ── Helper: Keyword Extraction (TF-based) ──
+
+fn extract_keywords(text: &str, max: usize) -> Vec<String> {
+    let stop_words = [
+        "the","a","an","and","or","but","in","on","at","to","for","of","with","by",
+        "from","is","it","that","this","was","are","be","has","have","had","not","they",
+        "we","you","he","she","its","my","your","our","their","will","would","can","could",
+        "should","may","might","do","did","does","been","being","if","then","than","so",
+        "as","up","out","no","just","about","also","into","over","after","all","some",
+        "any","each","which","when","where","who","what","how","why","more","most","other",
+        "very","much","many","such","only","own","same","still","even","back","well",
+    ];
+    
+    let lower = text.to_lowercase();
+    let words: Vec<&str> = lower
+        .split(|c: char| !c.is_alphanumeric())
+        .filter(|w| w.len() > 3 && !stop_words.contains(w))
+        .collect();
+    
+    let mut freq: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for w in &words {
+        *freq.entry(w).or_insert(0) += 1;
+    }
+    
+    let mut sorted: Vec<_> = freq.into_iter().collect();
+    sorted.sort_by(|a, b| b.1.cmp(&a.1));
+    sorted.truncate(max);
+    sorted.into_iter().map(|(w, _)| w.to_string()).collect()
+}
+
+// ── Search & Intelligence Commands ──
+
+/// FTS5 full-text search across notes (ranked by relevance)
+#[tauri::command]
+async fn fts_search_notes(state: State<'_, Arc<Mutex<AppState>>>, query: String) -> Result<Vec<Note>, String> {
+    let state = state.lock().await;
+    let rows = sqlx::query(
+        "SELECT n.* FROM notes n
+         JOIN notes_fts fts ON fts.rowid = n.id
+         WHERE notes_fts MATCH ?
+         ORDER BY rank LIMIT 50"
+    )
+    .bind(&query)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    Ok(rows.iter().map(|row| Note {
+        id: row.get("id"),
+        title: row.get("title"),
+        content: row.get("content"),
+        folder: row.get("folder"),
+        tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+    }).collect())
+}
+
+/// FTS5 full-text search across papers
+#[tauri::command]
+async fn fts_search_papers(state: State<'_, Arc<Mutex<AppState>>>, query: String) -> Result<Vec<Paper>, String> {
+    let state = state.lock().await;
+    let rows = sqlx::query(
+        "SELECT p.* FROM papers p
+         JOIN papers_fts fts ON fts.rowid = p.id
+         WHERE papers_fts MATCH ?
+         ORDER BY rank LIMIT 50"
+    )
+    .bind(&query)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    Ok(rows.iter().map(|row| Paper {
+        id: row.get("id"),
+        title: row.get("title"),
+        authors: row.get("authors"),
+        year: row.get("year"),
+        doi: row.get("doi"),
+        journal: row.get("journal"),
+        tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
+        favorite: row.get("favorite"),
+        personal_note: row.get("personal_note"),
+        added_at: row.get("added_at"),
+    }).collect())
+}
+
+/// Trigram substring search — finds partial word matches
+#[tauri::command]
+async fn trigram_search_notes(state: State<'_, Arc<Mutex<AppState>>>, query: String) -> Result<Vec<Note>, String> {
+    if query.len() < 3 {
+        return search_notes(state, query).await;
+    }
+    let state = state.lock().await;
+    let rows = sqlx::query(
+        "SELECT n.* FROM notes n
+         JOIN notes_trigram trg ON trg.rowid = n.id
+         WHERE notes_trigram MATCH ?
+         ORDER BY rank LIMIT 50"
+    )
+    .bind(&query)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| e.to_string())?;
+    
+    Ok(rows.iter().map(|row| Note {
+        id: row.get("id"),
+        title: row.get("title"),
+        content: row.get("content"),
+        folder: row.get("folder"),
+        tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
+        created_at: row.get("created_at"),
+        updated_at: row.get("updated_at"),
+    }).collect())
+}
+
+/// Semantic search using cosine similarity on stored embeddings
+#[tauri::command]
+async fn semantic_search_notes(state: State<'_, Arc<Mutex<AppState>>>, query_embedding: Vec<f64>, limit: Option<i64>) -> Result<Vec<Note>, String> {
+    let state = state.lock().await;
+    let limit = limit.unwrap_or(20);
+    
+    let rows = sqlx::query("SELECT * FROM notes WHERE embedding IS NOT NULL")
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    let mut scored: Vec<(f64, Note)> = rows.iter().filter_map(|row| {
+        let emb_str: String = row.get("embedding");
+        let stored: Vec<f64> = serde_json::from_str(&emb_str).ok()?;
+        let note = Note {
+            id: row.get("id"),
+            title: row.get("title"),
+            content: row.get("content"),
+            folder: row.get("folder"),
+            tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
+            created_at: row.get("created_at"),
+            updated_at: row.get("updated_at"),
+        };
+        Some((cosine_similarity(&query_embedding, &stored), note))
+    }).collect();
+    
+    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    scored.truncate(limit as usize);
+    Ok(scored.into_iter().map(|(_, n)| n).collect())
+}
+
+/// Semantic search for papers
+#[tauri::command]
+async fn semantic_search_papers(state: State<'_, Arc<Mutex<AppState>>>, query_embedding: Vec<f64>, limit: Option<i64>) -> Result<Vec<Paper>, String> {
+    let state = state.lock().await;
+    let limit = limit.unwrap_or(20);
+    
+    let rows = sqlx::query("SELECT * FROM papers WHERE embedding IS NOT NULL")
+        .fetch_all(&state.db)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    let mut scored: Vec<(f64, Paper)> = rows.iter().filter_map(|row| {
+        let emb_str: String = row.get("embedding");
+        let stored: Vec<f64> = serde_json::from_str(&emb_str).ok()?;
+        let paper = Paper {
+            id: row.get("id"),
+            title: row.get("title"),
+            authors: row.get("authors"),
+            year: row.get("year"),
+            doi: row.get("doi"),
+            journal: row.get("journal"),
+            tags: serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default(),
+            favorite: row.get("favorite"),
+            personal_note: row.get("personal_note"),
+            added_at: row.get("added_at"),
+        };
+        Some((cosine_similarity(&query_embedding, &stored), paper))
+    }).collect();
+    
+    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    scored.truncate(limit as usize);
+    Ok(scored.into_iter().map(|(_, p)| p).collect())
+}
+
+/// Store embedding for a note
+#[tauri::command]
+async fn set_note_embedding(state: State<'_, Arc<Mutex<AppState>>>, id: i64, embedding: Vec<f64>) -> Result<(), String> {
+    let state = state.lock().await;
+    let emb_json = serde_json::to_string(&embedding).map_err(|e| e.to_string())?;
+    sqlx::query("UPDATE notes SET embedding = ? WHERE id = ?")
+        .bind(&emb_json).bind(id)
+        .execute(&state.db).await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Store embedding for a paper
+#[tauri::command]
+async fn set_paper_embedding(state: State<'_, Arc<Mutex<AppState>>>, id: i64, embedding: Vec<f64>) -> Result<(), String> {
+    let state = state.lock().await;
+    let emb_json = serde_json::to_string(&embedding).map_err(|e| e.to_string())?;
+    sqlx::query("UPDATE papers SET embedding = ? WHERE id = ?")
+        .bind(&emb_json).bind(id)
+        .execute(&state.db).await.map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Auto-tag: extract keywords from note and apply as tags
+#[tauri::command]
+async fn auto_tag_note(state: State<'_, Arc<Mutex<AppState>>>, id: i64, max_tags: Option<usize>) -> Result<Vec<String>, String> {
+    let state = state.lock().await;
+    let max_tags = max_tags.unwrap_or(5);
+    
+    let row = sqlx::query("SELECT title, content, tags FROM notes WHERE id = ?")
+        .bind(id).fetch_optional(&state.db).await.map_err(|e| e.to_string())?
+        .ok_or("Note not found")?;
+    
+    let title: String = row.get("title");
+    let content: String = row.get("content");
+    let keywords = extract_keywords(&format!("{} {}", title, content), max_tags);
+    
+    let mut tags: Vec<String> = serde_json::from_str(&row.get::<String, _>("tags")).unwrap_or_default();
+    for kw in &keywords {
+        if !tags.contains(kw) { tags.push(kw.clone()); }
+    }
+    
+    sqlx::query("UPDATE notes SET tags = ? WHERE id = ?")
+        .bind(serde_json::to_string(&tags).unwrap()).bind(id)
+        .execute(&state.db).await.map_err(|e| e.to_string())?;
+    
+    Ok(keywords)
+}
+
+/// Suggest tags for text (preview only, no save)
+#[tauri::command]
+async fn suggest_tags(state: State<'_, Arc<Mutex<AppState>>>, text: String, max_tags: Option<usize>) -> Result<Vec<String>, String> {
+    let _state = state.lock().await;
+    Ok(extract_keywords(&text, max_tags.unwrap_or(5)))
+}
+
+/// Global search across all entity types
+#[tauri::command]
+async fn global_search(state: State<'_, Arc<Mutex<AppState>>>, query: String) -> Result<serde_json::Value, String> {
+    let state = state.lock().await;
+    let like = format!("%{}%", query);
+    
+    let notes = sqlx::query("SELECT * FROM notes WHERE title LIKE ? OR content LIKE ? LIMIT 20")
+        .bind(&like).bind(&like)
+        .fetch_all(&state.db).await.map_err(|e| e.to_string())?;
+    
+    let papers = sqlx::query("SELECT * FROM papers WHERE title LIKE ? OR authors LIKE ? LIMIT 20")
+        .bind(&like).bind(&like)
+        .fetch_all(&state.db).await.map_err(|e| e.to_string())?;
+    
+    let tasks = sqlx::query("SELECT * FROM tasks WHERE text LIKE ? LIMIT 20")
+        .bind(&like)
+        .fetch_all(&state.db).await.map_err(|e| e.to_string())?;
+    
+    Ok(serde_json::json!({
+        "notes": notes.iter().map(|r| serde_json::json!({
+            "id": r.get::<i64, _>("id"),
+            "title": r.get::<String, _>("title"),
+            "type": "note"
+        })).collect::<Vec<_>>(),
+        "papers": papers.iter().map(|r| serde_json::json!({
+            "id": r.get::<i64, _>("id"),
+            "title": r.get::<String, _>("title"),
+            "type": "paper"
+        })).collect::<Vec<_>>(),
+        "tasks": tasks.iter().map(|r| serde_json::json!({
+            "id": r.get::<i64, _>("id"),
+            "title": r.get::<String, _>("text"),
+            "type": "task"
+        })).collect::<Vec<_>>(),
+    }))
 }
